@@ -1903,9 +1903,9 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
       {label:"🧭 Amap", url: "iosamap://poi?sourceApplication=ChinaTrip&name="+encodeURIComponent(place)}
     ];
   }
-  function appendMapLinks(container, place, mapUrlHint){
-    var list = mapsForPlace(place);
-    if(!list.length) return;
+  function appendMapLinks(container, place, exactMaps){
+  // Если переданы точные ссылки (из row.maps) – используем их
+  if (exactMaps && exactMaps.length) {
     var wrap = document.createElement("div");
     wrap.className = "map-choose";
     var btn = document.createElement("button");
@@ -1914,9 +1914,11 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
     btn.textContent = "🗺 Карты";
     var panel = document.createElement("div");
     panel.className = "map-choose-panel";
-    list.forEach(function(m){
+    exactMaps.forEach(function(m){
       var a = document.createElement("a");
-      a.href = m.url; a.target = "_blank"; a.rel = "noopener";
+      a.href = m.url;
+      a.target = "_blank";
+      a.rel = "noopener";
       a.textContent = m.label;
       panel.appendChild(a);
     });
@@ -1930,25 +1932,69 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
     wrap.appendChild(btn);
     wrap.appendChild(panel);
     container.appendChild(wrap);
+    return;
   }
+
+  // Если точных ссылок нет – генерируем через mapsForPlace (старая логика)
+  var list = mapsForPlace(place);
+  if(!list.length) return;
+  var wrap = document.createElement("div");
+  wrap.className = "map-choose";
+  var btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "map-choose-btn";
+  btn.textContent = "🗺 Карты";
+  var panel = document.createElement("div");
+  panel.className = "map-choose-panel";
+  list.forEach(function(m){
+    var a = document.createElement("a");
+    a.href = m.url; a.target = "_blank"; a.rel = "noopener";
+    a.textContent = m.label;
+    panel.appendChild(a);
+  });
+  btn.addEventListener("click", function(e){
+    e.preventDefault();
+    e.stopPropagation();
+    var open = wrap.classList.toggle("open");
+    btn.classList.toggle("open", open);
+    btn.textContent = open ? "✕ Карты" : "🗺 Карты";
+  });
+  wrap.appendChild(btn);
+  wrap.appendChild(panel);
+  container.appendChild(wrap);
+}
 
   function routeKey(n){ return (n||"").toLowerCase().trim(); }
   function isInRoute(name){ var k=routeKey(name); return routePoints.some(function(p){ return routeKey(p.name)===k; }); }
-  function addToRoute(name,url){ if(isInRoute(name)) return; routePoints.push({name:name,map:url||""}); renderRoutePanel(); showHint("В маршрут: "+name.slice(0,22)); }
+  function addToRoute(name, url, mapsArray){
+  if(isInRoute(name)) return;
+  var appleUrl = null;
+  var amapUrl = null;
+  if (mapsArray && mapsArray.length) {
+    mapsArray.forEach(function(m){
+      if (m.label && m.label.indexOf("Apple") !== -1) appleUrl = m.url;
+      if (m.label && m.label.indexOf("Amap") !== -1) amapUrl = m.url;
+    });
+  }
+  routePoints.push({name:name, map:url || "", apple: appleUrl, amap: amapUrl});
+  renderRoutePanel();
+  showHint("В маршрут: "+name.slice(0,22));
+}
   function removeFromRoute(name){ var k=routeKey(name); routePoints=routePoints.filter(function(p){ return routeKey(p.name)!==k; }); renderRoutePanel(); }
   function clearRoute(){ routePoints=[]; renderRoutePanel(); }
-  function makeRouteBtn(name,url){
-    var b=document.createElement("button"); b.type="button";
+ function makeRouteBtn(name, url, mapsArray){
+  var b=document.createElement("button"); b.type="button";
+  b.className="route-add"+(isInRoute(name)?" on":"");
+  b.textContent=isInRoute(name)?"✓ в маршруте":"＋ маршрут";
+  b.addEventListener("click", function(e){
+    e.stopPropagation();
+    if(isInRoute(name)) removeFromRoute(name);
+    else addToRoute(name, url, mapsArray);
     b.className="route-add"+(isInRoute(name)?" on":"");
     b.textContent=isInRoute(name)?"✓ в маршруте":"＋ маршрут";
-    b.addEventListener("click", function(e){
-      e.stopPropagation();
-      if(isInRoute(name)) removeFromRoute(name); else addToRoute(name,url);
-      b.className="route-add"+(isInRoute(name)?" on":"");
-      b.textContent=isInRoute(name)?"✓ в маршруте":"＋ маршрут";
-    });
-    return b;
-  }
+  });
+  return b;
+}
   function renderRoutePanel(){
     var panel=document.getElementById("routePanel"), list=document.getElementById("routeList"), count=document.getElementById("routeCount");
     if(!panel||!list) return;
@@ -1966,15 +2012,37 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
     });
   }
   function buildAppleDirections(){
-    if(routePoints.length<2){ showHint("Нужно 2+ точки"); return; }
-    var u="https://maps.apple.com/?saddr="+encodeURIComponent(routePoints[0].name);
-    for(var i=1;i<routePoints.length;i++) u+="&daddr="+encodeURIComponent(routePoints[i].name);
-    window.open(u,"_blank");
+  if(routePoints.length<2){ showHint("Нужно 2+ точки"); return; }
+  var url = "";
+  for(var i=0; i<routePoints.length; i++){
+    var p = routePoints[i];
+    var suffix = "";
+    if (p.apple) {
+      var match = p.apple.match(/ll=([0-9.]+),([0-9.]+)/);
+      if (match) {
+        suffix = "&daddr=" + match[1] + "," + match[2];
+      } else {
+        suffix = "&daddr=" + encodeURIComponent(p.name);
+      }
+    } else {
+      suffix = "&daddr=" + encodeURIComponent(p.name);
+    }
+    if (i===0) url = "https://maps.apple.com/?saddr=" + encodeURIComponent(p.name);
+    else url += suffix;
   }
+  window.open(url,"_blank");
+}
   function buildAmapDirections(){
-    if(routePoints.length<2){ showHint("Нужно 2+ точки"); return; }
-    window.open("https://uri.amap.com/navigation?from="+encodeURIComponent(routePoints[0].name)+"&to="+encodeURIComponent(routePoints[routePoints.length-1].name)+"&mode=walking&callnative=1","_blank");
+  if(routePoints.length<2){ showHint("Нужно 2+ точки"); return; }
+  var last = routePoints[routePoints.length-1];
+  var first = routePoints[0];
+  if (first.amap && last.amap) {
+    // Если есть точные ссылки Amap – используем их для навигации
+    window.open("https://uri.amap.com/navigation?from=" + encodeURIComponent(first.name) + "&to=" + encodeURIComponent(last.name) + "&mode=walking&callnative=1","_blank");
+  } else {
+    window.open("https://uri.amap.com/navigation?from=" + encodeURIComponent(first.name) + "&to=" + encodeURIComponent(last.name) + "&mode=walking&callnative=1","_blank");
   }
+}
 
   function renderFoodItem(item){
     var wrap=el("div","fooditem");
@@ -2038,8 +2106,8 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
       if(it.meta) item.appendChild(el("div","ni-meta", esc(it.meta)));
       if(it.desc) item.appendChild(el("div","ni-desc", esc(it.desc)));
       var acts=el("div","ni-actions");
-      appendMapLinks(acts, it.name, it.map);
-      acts.appendChild(makeRouteBtn(it.name, it.map||""));
+      appendMapLinks(acts, it.name, null);
+      acts.appendChild(makeRouteBtn(it.name, null, null));
       item.appendChild(acts); body.appendChild(item);
     });
     wrap.appendChild(body);
@@ -2055,7 +2123,7 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
     main.appendChild(el("div","stop-place", esc(row.place)));
     var transitRow=el("div","stop-transit");
     if(row.transit&&row.transit!=="—") transitRow.appendChild(el("span","tag", esc(row.transit)));
-    appendMapLinks(transitRow, row.place);
+    appendMapLinks(transitRow, row.place, row.maps);
     (row.ticket||[]).forEach(function(t){ if(t.text&&t.text!=="—") transitRow.appendChild(renderTicketItem(t)); });
     if(transitRow.children.length) main.appendChild(transitRow);
 
@@ -2085,7 +2153,7 @@ const TRIP = {"overview":["中国 КИТАЙ И ГОНКОНГ","11–27 сен�
       }
       if(near){ var nb=renderNearby(near); if(nb) morePanel.appendChild(nb); }
       var primaryMap=(row.maps&&row.maps[0])?row.maps[0].url:"";
-      morePanel.appendChild(makeRouteBtn(row.place, primaryMap));
+      morePanel.appendChild(makeRouteBtn(row.place, null, row.maps));
       moreBtn.addEventListener("click", function(e){
         e.stopPropagation();
         var open=morePanel.classList.toggle("open");
