@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const upstream = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`,
+      `https://generativelanguage.googleapis.com/v1/models/${MODEL}:generateContent`,
       {
         method: "POST",
         headers: {
