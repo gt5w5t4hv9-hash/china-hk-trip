@@ -519,7 +519,7 @@ html.dark .topbar.compact{
 .route-panel{
   position:fixed;
   left: auto; right: max(.9rem, env(safe-area-inset-right, .9rem));
-  bottom: max(4.2rem, calc(3.4rem + env(safe-area-inset-bottom, 0px)));
+  bottom: max(1.2rem, calc(1rem + env(safe-area-inset-bottom, 0px)));
   transform: none;
   width: auto; max-width: min(92vw, 340px);
   z-index:55;
@@ -1241,7 +1241,7 @@ html.dark .map-tip-banner{ background: rgba(139,46,37,.2); color: var(--ink-soft
 .ai-fab{
   position: fixed;
   right: 1rem;
-  bottom: calc(5.2rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(8.5rem + env(safe-area-inset-bottom, 0px));
   z-index: 55;
   border: none;
   background: var(--cinnabar);
@@ -1256,18 +1256,20 @@ html.dark .map-tip-banner{ background: rgba(139,46,37,.2); color: var(--ink-soft
 .ai-sheet[hidden]{ display:none !important; }
 .ai-sheet{
   position: fixed; inset: 0; z-index: 95;
-  display: flex; align-items: flex-end; justify-content: center;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
 }
 .ai-backdrop{ position:absolute; inset:0; background: rgba(30,20,15,.45); }
 .ai-panel{
   position: relative;
   width: min(100%, 440px);
-  max-height: 88vh;
+  max-height: 80vh;
   background: var(--paper-card);
-  border-radius: 16px 16px 0 0;
+  border-radius: 16px;
   display: flex; flex-direction: column;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -8px 30px rgba(0,0,0,.2);
+  padding-bottom: 0;
+  box-shadow: 0 0 30px rgba(0,0,0,.3);
+  overflow: hidden;
 }
 .ai-head{
   display:flex; justify-content:space-between; align-items:flex-start;
