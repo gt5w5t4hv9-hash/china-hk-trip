@@ -4,7 +4,7 @@
 // Стоимость: $0. Бесплатный лимит — 1500 запросов в день на ключ, этого с большим запасом
 // хватает на компанию из нескольких человек за всю поездку.
 
-const MODEL = process.env.AI_MODEL || "gemini-2.5-flash";
+const MODEL = process.env.AI_MODEL || "gemini-1.5-flash";
 const MAX_OUTPUT_TOKENS = 700; // короткий ответ под мобильный чат
 
 module.exports = async function handler(req, res) {
